@@ -1,168 +1,134 @@
-import Exceptions.NotFoundTaskException;
-import model.States;
+import exceptions.NotFoundTaskException;
+import exceptions.StorageException;
+import model.TaskStatus;
 import model.Task;
-import model.TaskArray;
+import service.TaskService;
+import storage.InMemoryTaskStorage;
+import storage.TaskStorage;
 
-import java.util.Date;
-import java.util.InputMismatchException;
+import java.time.LocalDateTime;
 import java.util.Scanner;
 
 public class Main {
-    public static Scanner scanner;
+    private static final Scanner scanner = new Scanner(System.in);
     public static void main(String[] args) {
-        startProgram();
+        TaskStorage storage = new InMemoryTaskStorage();
+        TaskService service = new TaskService(storage);
+        System.out.println("TO DO LIST started");
         while (true) {
-            createMenu();
-            int selection = scanner.nextInt();
-            switch (selection) {
-                case 1:
-                    createTask(); break;
-                case 2:
-                    deleteTask(); break;
-                case 3:
-                    editTask(); break;
-                case 4:
-                    TaskArray.showTasks(); break;
+            printMenu();
+            String input = scanner.nextLine();
+            switch (input) {
+                case "1":
+                    createTask(service); break;
+                case "2":
+                    deleteTask(service); break;
+                case "3":
+                    editTask(service); break;
+                case "4":
+                    printAllTasks(service.showAllTasks()); break;
+                case "0": System.out.println("Exit"); return;
+                default: System.out.println("Unknown command");
             }
-//            if (selection == 1) {
-//                createTask();
-//            } else if (selection == 2) {
-//                deleteTask();
-//            } else if (selection == 3) {
-//                editTask();
-//            } else if (selection == 4) {
-//                TaskArray.showTasks();
-//            }
-
         }
     }
-    public static void startProgram() {
-        scanner = new Scanner(System.in);
-        System.out.println("TO DO LIST is starting to work");
-    }
-    public static void createMenu() {
-        System.out.println("Select an action: ");
-        System.out.println("1) Create a task\n" +
-                "2) Delete a task\n" +
-                "3) Edit a task\n" +
-                "4) Show tasks");
+    public static void printMenu() {
+        System.out.println("""
+                _____________________
+                1) Create task
+                2) Delete task
+                3) Edit task
+                4) Show tasks
+                0) Exit
+                _____________________
+                
+                """);
     }
 
-    public static void createTask() {
-        scanner.nextLine();
-        System.out.println("Enter the task name: ");
-        String name = scanner.nextLine();
-        System.out.println("Enter the task description: ");
-        String description = scanner.nextLine();
-        System.out.println("Enter the task date in format: \n\"YYYY MM DD HH MM\"\nor enter \"now\"");
-        String strDate = scanner.nextLine();
-        if (strDate.equals("now")) {
-            TaskArray.addTask(new Task(name, description, new Date()));
+    public static void createTask(TaskService service) {
+        System.out.println("Task name: ");
+        String inputName = scanner.nextLine();
+        System.out.println("Description: ");
+        String inputDescription = scanner.nextLine();
+        System.out.println("Date (YYYY MM DD HH MM) or enter \"now\" or enter \"skip\":");
+        String inputDate = scanner.nextLine();
+        LocalDateTime parseInputDate;
+        if (inputDate.equals("skip")) {
+            parseInputDate = null;
+        } else if (inputDate.equals("now")) {
+            parseInputDate = LocalDateTime.now();
         } else {
-            while (true) {
-                try {
-                    int[] date = parseDate(strDate);
-                    TaskArray.addTask(new Task(name, description, new Date(date[0], date[1], date[2], date[3], date[4])));
-                    break;
-                } catch (IllegalArgumentException e) {
-                    System.out.println("Error: " + e.getMessage());
-                    strDate = scanner.nextLine();
-                }
-            }
-
+            parseInputDate = LocalDateTime.of(parseDate(inputDate)[0], parseDate(inputDate)[1], parseDate(inputDate)[2], parseDate(inputDate)[3], parseDate(inputDate)[4]);
+        }
+        try {
+            service.createTask(inputName, inputDescription, parseInputDate);
+            System.out.println("Task created");
+        } catch (StorageException e) {
+            System.out.println(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            System.out.println("Error: " + e.getMessage());
         }
     }
-    public static void deleteTask() {
-        System.out.println("Select a task to delete");
-        TaskArray.showTasks();
+    public static void deleteTask(TaskService service) {
+        System.out.println("Select a task to delete: ");
+        printAllTasks(service.showAllTasks());
         while (true) {
             try {
-                String selectTask = scanner.next();
-                if (selectTask.equals("exit")) {
+                String input = scanner.next();
+                if (input.equals("exit")) {
                     break;
                 }
-                TaskArray.removeTask(TaskArray.findTask(selectTask));
+                service.removeTask(input);
                 break;
             } catch (NotFoundTaskException e) {
                 System.out.println("Task is not found");
             }
         }
     }
-    public static void editTask() {
-        Task changeTask = null;
+    public static void editTask(TaskService service) {
         System.out.println("Select a task to edit: ");
-        TaskArray.showTasks();
+        printAllTasks(service.showAllTasks());
+        Task inputTask = null;
+        String input;
         while (true) {
             try {
-                String selectTask = scanner.next();
-                if (selectTask.equals("exit")) {
+                input = scanner.nextLine();
+                if (input.equals("exit")) {
                     break;
                 }
-                changeTask = TaskArray.findTask(selectTask);
+                inputTask = service.findTask(input);
                 break;
             } catch (NotFoundTaskException e) {
-                System.out.println("Task is not found");
+                System.out.println("Task is not found, try again: ");
             }
         }
-        if (changeTask != null) {
-            System.out.println("Select a task element to edit: \n" +
-                    "1) name\n" +
-                    "2) description\n" +
-                    "3) date\n" +
-                    "4) state");
-            int selectChange;
-            while (true) {
-                try {
-                    selectChange = scanner.nextInt();
-                    if (selectChange < 1 || selectChange > 4) {
-                        System.out.println("Enter a number from 1 to 4");
-                        continue;
-                    }
-                    break;
-                } catch (InputMismatchException e) {
-                    System.out.println("Enter a number from 1 to 4");
-                    scanner.nextLine();
-                }
-            }
-            if (selectChange == 1) {
-                scanner.nextLine();
-                System.out.println("Enter new Task name");
-                String newTaskName = scanner.nextLine();
-                TaskArray.toChangeTaskName(changeTask, newTaskName);
-                System.out.println("Name is changed successfully");
-            } else if (selectChange == 2) {
-                System.out.println("Enter new Task description");
-                String newTaskDescription = scanner.nextLine();
-                TaskArray.toChangeTaskDescription(changeTask, newTaskDescription);
-                System.out.println("Description is changed successfully");
-            } else if (selectChange == 3) {
-                scanner.nextLine();
-                System.out.println("Enter new Task date");
-                String changeDate = scanner.nextLine();
-                while (true) {
-                    try {
-                        int[] date = parseDate(changeDate);
-                        changeTask.date = new Date(date[0], date[1], date[2], date[3], date[4]);
-                        break;
-                    } catch (IllegalArgumentException e) {
-                        System.out.println("Error: " + e.getMessage());
-                        changeDate = scanner.nextLine();
-                    }
-                }
-                int[] intChangeDate = parseDate(changeDate);
-                Date newTaskDate = new Date(intChangeDate[0], intChangeDate[1], intChangeDate[2], intChangeDate[3], intChangeDate[4]);
-                TaskArray.toChangeTaskDate(changeTask, newTaskDate);
-                System.out.println("Date is changed successfully");
-            } else if (selectChange == 4) {
-                System.out.println("Enter new Task state: TODO, INPROGRESS, COMPLETE");
-                String changeState = scanner.next();
-                States newTaskState = States.valueOf(changeState.toUpperCase());
-                TaskArray.toChangeTaskState(changeTask, newTaskState);
-                System.out.println("State is changed successfully");
+        System.out.println("""
+            Select a task element to edit:
+            1) name
+            2) description
+            3) date
+            4) status
+            """);
+        String selectChange = scanner.nextLine();
+        switch (selectChange.toLowerCase()) {
+            case "1": editTaskName(service, inputTask); break;
+            case "name": editTaskName(service, inputTask); break;
+            case "2": editTaskDescription(service, inputTask); break;
+            case "description": editTaskDescription(service, inputTask); break;
+            case "3": editTaskDate(service, inputTask); break;
+            case "date": editTaskDate(service, inputTask); break;
+            case "4": editTaskStatus(service, inputTask); break;
+            case "status": editTaskStatus(service, inputTask); break;
+        }
+    }
+    public static void printAllTasks(Task[] taskArray) {
+        for (int i = 0; i < taskArray.length - 1; i++) {
+            System.out.println(taskArray[i]);
+            if (taskArray[i+1] == null) {
+                break;
             }
         }
     }
-
     public static int[] parseDate(String YYYY_MM_DD_HH_MM) {
         // Разбиваем по одному или нескольким пробелам
         String[] stringDate = YYYY_MM_DD_HH_MM.trim().split("\\s+");
@@ -201,10 +167,65 @@ public class Main {
         if (intDate[4] < 0 || intDate[4] > 59) {       // Минуты
             throw new IllegalArgumentException("Minute must be 0-59");
         }
-
-        intDate[0] -= 1900;  // Вычитаем 1900 из года
-        intDate[1] -= 1;     // Уменьшаем месяц на 1 (январь = 0)
+        // Уменьшаем месяц на 1 (январь = 0)
 
         return intDate;
+    }
+
+    public static void editTaskName(TaskService service, Task task) {
+        System.out.println("Enter a new Task name");
+        String newTaskName = scanner.nextLine();
+        service.changeTaskName(task, newTaskName);
+        System.out.println("Name is changed successfully");
+    }
+    public static void editTaskDescription(TaskService service, Task task) {
+        System.out.println("Enter a new Task description");
+        String newTaskDescription = scanner.nextLine();
+        service.changeTaskDescription(task, newTaskDescription);
+        System.out.println("Description is changed successfully");
+    }
+    public static void editTaskDate(TaskService service, Task task) {
+        System.out.println("Enter a new Task date (YYYY MM DD HH MM) or enter \"now\": ");
+        String newTaskDate = scanner.nextLine();
+
+        LocalDateTime dateTime;
+
+        if (newTaskDate.equalsIgnoreCase("now")) {
+            dateTime = LocalDateTime.now();
+        } else {
+            try {
+                int[] dateParts = parseDate(newTaskDate); // Парсим ОДИН раз!
+                dateTime = LocalDateTime.of(
+                        dateParts[0], // год
+                        dateParts[1], // месяц
+                        dateParts[2], // день
+                        dateParts[3], // час
+                        dateParts[4]  // минута
+                );
+            } catch (IllegalArgumentException e) {
+                System.out.println("Error: " + e.getMessage());
+                System.out.println("Date not changed. Please try again.");
+                return;
+            }
+        }
+
+        service.changeTaskDate(task, dateTime);
+        System.out.println("Date is changed successfully");
+    }
+    public static void editTaskStatus(TaskService service, Task task) {
+        System.out.println("Enter a new Task status: TODO, INPROGRESS, COMPLETE");
+        String newTaskStatus;
+        TaskStatus newStatus;
+        while (true) {
+            try {
+                newTaskStatus = scanner.nextLine();
+                newStatus = TaskStatus.valueOf(newTaskStatus.toUpperCase());
+                break;
+            } catch (Exception e) {
+                System.out.println("Wrong status");
+            }
+        }
+        service.changeTaskStatus(task, newStatus);
+        System.out.println("Status is changed successfully");
     }
 }

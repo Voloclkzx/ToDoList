@@ -1,5 +1,5 @@
 package model;
 
-public enum States {
+public enum TaskStatus {
     TODO, INPROGRESS, COMPLETE;
 }

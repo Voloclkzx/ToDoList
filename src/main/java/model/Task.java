@@ -1,42 +1,70 @@
 package model;
-
-import java.util.Date;
+import java.time.LocalDateTime;
 
 public class Task {
-    public String name;
-    public String description;
-    public Date date; //when to do the task
-    public States state;
+    private int id;
+    private String name;
+    private String description;
+    private LocalDateTime dateTime; //when to do the task
+    private TaskStatus status;
 
-    public Task(String name) {
+    private static int idCount = 1;
+
+    public Task(String name, String description, LocalDateTime dateTime) {
+        this.id = idCount++;
         this.name = name;
-        this.state = States.TODO;
+        this.dateTime = dateTime;
+        this.description = description;
+        this.status = TaskStatus.TODO;
     }
-    public Task(String name, Date date) {
-        this(name);
-        this.date = date;
+
+    public int getId() {
+        return id;
     }
-    public Task(String name, String description) {
-        this(name);
+    public String getName() {
+        return name;
+    }
+    public String getDescription() {
+        return description;
+    }
+    public LocalDateTime getDateTime() {
+        return dateTime;
+    }
+    public TaskStatus getStatus() {
+        return status;
+    }
+
+    public void changeName(String name) {
+        this.name = name;
+    }
+    public void changeDescription(String description) {
         this.description = description;
     }
-    public Task(String name, Date date, String description) {
-        this(name, date);
-        this.description = description;
+    public void changeDateTime(LocalDateTime dateTime) {
+        this.dateTime = dateTime;
     }
-    public Task(String name, String description, Date date) {
-        this(name, date);
-        this.description = description;
+    public void changeStatus(TaskStatus status) {
+        this.status = status;
     }
 
 
     public String toString() {
-        if (this.date != null) {
-            return this.name + "\n" + this.date + "\n" + this.description + "\n" + "Status: " + this.state + "\n-----------------------------------";
+        if (this.dateTime != null) {
+            return this.name + "\n" + this.dateTime + "\n" + this.description + "\n" + "Status: " + this.status + "\n-----------------------------------";
 
         } else {
-            return this.name + "\n" + this.description + "\n" + "Status: " + this.state + "\n-----------------------------------";
+            return this.name + "\n" + this.description + "\n" + "Status: " + this.status + "\n-----------------------------------";
         }
 
     }
+
+    public boolean equals(Object other) {
+        if (this == other) return true;
+        if (!(other instanceof Task)) return false;
+        Task otherTask = (Task) other;
+        return id == otherTask.id;
+    }
+
+
+
 }
